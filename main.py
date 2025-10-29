@@ -5,6 +5,8 @@ import cv2
 import cvzone
 import streamlit as st
 from ultralytics import YOLO
+import zipfile
+from io import BytesIO
 
 st.set_page_config(layout="wide", page_title="Smoking Detection", page_icon="🚭")
 
@@ -209,6 +211,70 @@ with col1:
     upload_file = st.file_uploader("Upload Image or Video", type=["jpg", "jpeg", "png", "mp4", "mov"], width=300)
     confidence_threshold = st.slider("Confidence Threshold", min_value=0.0, max_value=1.0, value=0.3, step=0.01,
                                      width=300)
+    if not upload_file and os.path.exists("demo.jpg"):
+        upload_file = type("DemoFile", (), {
+            "read": lambda self: open("demo.jpg", "rb").read(),
+            "name": "demo.jpg"
+        })()
+
+    # 🔧 Auto-load demo image properly (so slider changes trigger updates)
+    if not upload_file and os.path.exists("demo.jpg"):
+        class DemoFileWrapper:
+            def __init__(self, path):
+                self.file = open(path, "rb")
+                self.name = os.path.basename(path)
+
+            def read(self):
+                return self.file.read()
+
+
+        upload_file = DemoFileWrapper("demo.jpg")
+
+    # 💾 Create a downloadable ZIP of demo files
+    demo_files = ["demo.jpg", "demo.mp4", "The_Usual_Suspects.png"]
+
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zipf:
+        for file in demo_files:
+            if os.path.exists(file):
+                zipf.write(file)
+    zip_buffer.seek(0)
+
+    # 🎨 Custom light blue button style
+    st.markdown("""
+        <style>
+            .stDownloadButton > button {
+                background-color: #004C99;  /* Light blue */
+                color: white;
+                font-weight: 600;
+                border-radius: 8px;
+                padding: 8px 18px;
+                border: none;
+                transition: 0.3s;
+            }
+            .stDownloadButton > button:hover {
+                background-color: #0055aa;  /* Hover */
+                transform: scale(1.05);
+                color: white;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 💡 Hide button after clicked
+    if "download_hidden" not in st.session_state:
+        st.session_state.download_hidden = False
+
+    if not st.session_state.download_hidden:
+        clicked = st.download_button(
+            label="⬇️ Download Demo Files (ZIP)",
+            data=zip_buffer,
+            file_name="demo_files.zip",
+            mime="application/zip",
+            key="download_zip"
+        )
+        if clicked:
+            st.session_state.download_hidden = True
+            st.rerun()  # 🚀 force UI refresh so button disappears
 
 with col2:
     st.header("Display")
