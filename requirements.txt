@@ -1,5 +1,6 @@
-streamlit>=1.37.0
+streamlit
 opencv-python-headless
 ultralytics
 numpy
+cvzone
 Pillow
